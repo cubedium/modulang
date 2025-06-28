@@ -3,7 +3,7 @@ import std::io;
 
 faultdef UNKNOWN_INSTRUCTION;
 
-const bool DEBUG_MODE = true;
+const bool DEBUG_MODE = false;
 
 // ------------
 // Logging  
@@ -56,6 +56,20 @@ fn void go_to_previous_memory_cell(ModulangEnvironment* env)
 	print_info("went to previous memory cell");
 }
 
+fn void print_current_memory_cell_ascii(ModulangEnvironment env)
+{
+	print_info("printed character: %c", env.memory[env.current_memory_cell]);
+	io::printf("%c", env.memory[env.current_memory_cell]);
+	if (DEBUG_MODE) io::printn();
+}
+
+fn void print_current_memory_cell_decimal(ModulangEnvironment env)
+{
+	print_info("printed number: %d", env.memory[env.current_memory_cell]);
+	io::printf("%d", env.memory[env.current_memory_cell]);
+	if (DEBUG_MODE) io::printn();
+}
+
 fn void? procces_instruction(char instruction, ModulangEnvironment* env)
 {
 	switch (instruction) {
@@ -63,6 +77,8 @@ fn void? procces_instruction(char instruction, ModulangEnvironment* env)
 		case '-': decrement_current_memory_cell(env);
 		case '>': go_to_next_memory_cell(env);
 		case '<': go_to_previous_memory_cell(env);
+		case '@': print_current_memory_cell_decimal(*env);
+		case 'p': print_current_memory_cell_ascii(*env);
 		default : return UNKNOWN_INSTRUCTION?;
 	}
 }
