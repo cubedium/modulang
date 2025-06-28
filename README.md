@@ -1,5 +1,5 @@
 ### Modulang
-Modulang is a modular esolang made in (C3)[https://c3-lang.org]. What I mean by modular is that it is very easy to add new instructions.
+Modulang is a modular esolang made in [C3](https://c3-lang.org). What I mean by modular is that it is very easy to add new instructions.
 
 Modulang uses an array that contains 256 integers as its program memory.
 
