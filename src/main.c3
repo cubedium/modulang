@@ -1,7 +1,7 @@
 module modulang;
 import std::io;
 
-faultdef UNKNOWN_INSTRUCTION, CLOSED_NONEXISTENT_BLOCK;
+faultdef UNKNOWN_INSTRUCTION, CLOSED_NONEXISTENT_BLOCK, MAX_MEMORY_CELL_LIMIT;
 
 bool debug_mode = false;
 
@@ -22,14 +22,31 @@ fn void print_info(String message, args...)
 	}
 }
 
+// ------------
+// Structs
+// ------------
+struct ModulangLoopBlock (Printable)
+{
+	int location;
+	int counter;
+}
+fn usz? ModulangLoopBlock.to_format(&self, Formatter* f) @dynamic => io::struct_to_format(*self, f, false);
+
+
+struct ModulangBlocks (Printable)
+{
+	bool in_loop;
+	bool in_set_digit;
+	ModulangLoopBlock loop;
+}
+fn usz? ModulangBlocks.to_format(&self, Formatter* f) @dynamic => io::struct_to_format(*self, f, false);
+
 struct ModulangEnvironment (Printable)
 {
-	int[256] memory;
-	int loop_location;
-	int loop_counter;
+	char[256] memory;
 	int current_instruction;
 	char current_memory_cell;
-	bool in_loop;
+	ModulangBlocks block;
 }
 fn usz? ModulangEnvironment.to_format(&self, Formatter* f) @dynamic => io::struct_to_format(*self, f, false);
 
@@ -38,26 +55,26 @@ fn usz? ModulangEnvironment.to_format(&self, Formatter* f) @dynamic => io::struc
 // ------------
 fn void increment_current_memory_cell(ModulangEnvironment* env)
 {
-	env.memory[env.current_memory_cell] += 1;
 	print_info("incremented current memory cell by 1");
+	env.memory[env.current_memory_cell] += 1;
 }
 
 fn void decrement_current_memory_cell(ModulangEnvironment* env) 
 {
-	env.memory[env.current_memory_cell] -= 1;
 	print_info("decremented current memory cell by 1");
+	env.memory[env.current_memory_cell] -= 1;
 }
 
 fn void go_to_next_memory_cell(ModulangEnvironment* env)
 {
-	env.current_memory_cell += 1;
 	print_info("went to next memory cell");
+	env.current_memory_cell += 1;
 }
 
 fn void go_to_previous_memory_cell(ModulangEnvironment* env)
 {
-	env.current_memory_cell -= 1;
 	print_info("went to previous memory cell");
+	env.current_memory_cell -= 1;
 }
 
 fn void print_current_memory_cell_ascii(ModulangEnvironment env)
@@ -77,27 +94,55 @@ fn void print_current_memory_cell_decimal(ModulangEnvironment env)
 fn void start_loop(ModulangEnvironment* env)
 {
 	print_info("started loop");
-	env.loop_location = env.current_instruction;
-	env.loop_counter = env.memory[env.current_memory_cell];
-	env.in_loop = true;
+	env.block.loop.location = env.current_instruction;
+	env.block.loop.counter = env.memory[env.current_memory_cell];
+	env.block.in_loop = true;
 }
 
 fn void? close_block(ModulangEnvironment* env)
 {
 	print_info("attempting to close block");
-	if (env.in_loop) {
+	if (env.block.in_loop) {
 		print_info("closing loop block");
-		if (env.loop_counter == 1) {
-			env.in_loop = false;
+		if (env.block.loop.counter <= 1) {
+			env.block.in_loop = false;
 		} else {
-			env.loop_counter -= 1;
-			env.current_instruction = env.loop_location;
+			env.block.loop.counter -= 1;
+			env.current_instruction = env.block.loop.location;
 		}
-
+		return;
+	} else if (env.block.in_set_digit) {
+		print_info("closing set digit block");
+		env.block.in_set_digit = false;
 		return;
 	}
 
 	return CLOSED_NONEXISTENT_BLOCK?;
+}
+
+fn void do_nothing(char instruction)
+{
+	print_info("doing nothing at instruction '%c'", instruction);
+}
+
+fn void? procces_digit(ModulangEnvironment* env, char digit)
+{
+	print_info("proccessing digit: %d", digit);
+	if (env.block.in_set_digit) {
+		if (env.memory[env.current_memory_cell] * 10 + digit > 255) {
+			return MAX_MEMORY_CELL_LIMIT?;
+		}
+		env.memory[env.current_memory_cell] = env.memory[env.current_memory_cell] * 10 + digit;
+	} else {
+		return UNKNOWN_INSTRUCTION?;
+	}
+}
+
+fn void start_set_digit(ModulangEnvironment* env)
+{
+	print_info("started set digit");
+	env.block.in_set_digit = true;
+	env.memory[env.current_memory_cell] = 0;
 }
 
 fn void? procces_instruction(char instruction, ModulangEnvironment* env)
@@ -107,11 +152,15 @@ fn void? procces_instruction(char instruction, ModulangEnvironment* env)
 		case '-': decrement_current_memory_cell(env);
 		case '>': go_to_next_memory_cell(env);
 		case '<': go_to_previous_memory_cell(env);
-		case '@': print_current_memory_cell_decimal(*env);
+		case '#': print_current_memory_cell_decimal(*env);
 		case 'p': print_current_memory_cell_ascii(*env);
 		case '[': start_loop(env);
+		case '@': start_set_digit(env);
 		case ';': return close_block(env);
-		default : return UNKNOWN_INSTRUCTION?;
+		case '0'..'9': return procces_digit(env, instruction - '0');
+		case ' ': do_nothing(instruction);
+		case '\n': do_nothing(instruction);
+		default  : return UNKNOWN_INSTRUCTION?;
 	}
 }
 
@@ -138,7 +187,8 @@ fn int main(String[] args)
 		if (catch err = procces_instruction(instruction, &env)) {
 			switch (err) {
 				case UNKNOWN_INSTRUCTION: print_error("Unknown instruction at instruction %d: %c", env.current_instruction + 1, instruction);
-				case CLOSED_NONEXISTENT_BLOCK: print_error("closed nonexistent block at instruction %d", env.current_instruction + 1);
+				case CLOSED_NONEXISTENT_BLOCK: print_error("Closed nonexistent block at instruction %d", env.current_instruction + 1);
+				case MAX_MEMORY_CELL_LIMIT: print_error("Attempted to set memory cell to %d, which is higher than the limit (255) at instruction %d", (int) env.memory[env.current_memory_cell] * 10 + instruction - '0', env.current_instruction + 1);
 			}
 		}
 		print_info("%s", env);
