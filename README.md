@@ -5,10 +5,12 @@ Modulang uses an array that contains 256 integers as its program memory.
 
 ## Current Instructions
 ```
->            ; go to the next memory cell
-<            ; go to the previous memory cell
-+            ; increment the current memory cell by 1
--            ; decrement the current memory cell by 1
-@            ; print the current memory cell as a decimal number
-p            ; print the current memory cell as an ascii character
+>            : go to the next memory cell
+<            : go to the previous memory cell
++            : increment the current memory cell by 1
+-            : decrement the current memory cell by 1
+@            : print the current memory cell as a decimal number
+p            : print the current memory cell as an ascii character
+[            : opens a loop, loops the code in it for whatever the value in current memory cell is
+;            : closes any block, currently just closes a loop
 ```
