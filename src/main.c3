@@ -148,19 +148,20 @@ fn void start_set_digit(ModulangEnvironment* env)
 fn void? procces_instruction(char instruction, ModulangEnvironment* env)
 {
 	switch (instruction) {
-		case '+': increment_current_memory_cell(env);
-		case '-': decrement_current_memory_cell(env);
-		case '>': go_to_next_memory_cell(env);
-		case '<': go_to_previous_memory_cell(env);
-		case '#': print_current_memory_cell_decimal(*env);
-		case 'p': print_current_memory_cell_ascii(*env);
-		case '[': start_loop(env);
-		case '@': start_set_digit(env);
-		case ';': return close_block(env);
+		case '+'     : increment_current_memory_cell(env);
+		case '-'     : decrement_current_memory_cell(env);
+		case '>'     : go_to_next_memory_cell(env);
+		case '<'     : go_to_previous_memory_cell(env);
+		case '#'     : print_current_memory_cell_decimal(*env);
+		case 'p'     : print_current_memory_cell_ascii(*env);
+		case '['     : start_loop(env);
+		case '@'     : start_set_digit(env);
+		case ';'     : return close_block(env);
 		case '0'..'9': return procces_digit(env, instruction - '0');
-		case ' ': do_nothing(instruction);
-		case '\n': do_nothing(instruction);
-		default  : return UNKNOWN_INSTRUCTION?;
+		case ' '     : do_nothing(instruction);
+		case '\n'    : do_nothing(instruction);
+		case '\0'    : do_nothing(instruction);
+		default      : return UNKNOWN_INSTRUCTION?;
 	}
 }
 
@@ -169,26 +170,58 @@ fn void? procces_instruction(char instruction, ModulangEnvironment* env)
 // ------------
 fn int main(String[] args)
 {
-	if (args.len < 2) {
-		print_error("Not enough arguments!");
+	String input;
+	char[] input_buffer = mem::new_array(char, 4096);
+	defer free(input_buffer);
+	String filename;
+	ModulangEnvironment env;
+
+	foreach (i, arg : args) {
+		if (i==0) { continue; }
+		switch (arg) {
+			case "--debug": debug_mode = true;
+			case "--file" : if (args.len >= i+2) filename = args[i+1];
+			case "--input": if (args.len >= i+2) input    = args[i+1]; filename = "__got_input";
+			default       : if (filename == "" && arg.ends_with(".modlang")) filename = arg;
+		}
+		print_info("%d: \"%s\". is it a possible file?: %s", i, arg, (arg.ends_with(".modlang")) ? "yes" : "no");
+	}
+
+	print_info("input: %s", input);
+	print_info("filename: %s", filename);
+
+	print_info("starting to read file");
+	if (filename != "__got_input" && filename != "") {
+		File? file = file::open(filename, "r");
+		if (catch err = file) {
+			print_error("Couldn't open file! Does the file exist?");
+			print_info("Error: %s", err);
+			return 1;
+		}
+		defer (void)file.close();
+
+		usz? bytes_read = file.read(input_buffer);
+		if (catch err = bytes_read) {
+			print_error("Error while reading file! Use --debug for more info on the error.");
+			print_info("Error: %s", err);
+			return 1;
+		}
+		input = (String) input_buffer[0..bytes_read];
+	}
+	print_info("successfully read file");
+
+	if (input == "") {
+		print_error("You did not give a program to run! Maybe %s?", (filename != "__got_input") ? "the file is missing the .modlang extension" : "you left the input flag empty");
 		return 1;
 	}
 
-	if (args.len > 2) {
-		if (args[2] == "--debug") {
-			debug_mode = true;
-		} 
-	}
-
-	ModulangEnvironment env;
-
-	for (env.current_instruction = 0;env.current_instruction<args[1].len;env.current_instruction++) {
-		char instruction = args[1][env.current_instruction];
+	for (env.current_instruction = 0;env.current_instruction<input.len;env.current_instruction++) {
+		char instruction = input[env.current_instruction];
 		if (catch err = procces_instruction(instruction, &env)) {
 			switch (err) {
-				case UNKNOWN_INSTRUCTION: print_error("Unknown instruction at instruction %d: %c", env.current_instruction + 1, instruction);
+				case UNKNOWN_INSTRUCTION     : print_error("Unknown instruction at instruction %d: \"%c\"", env.current_instruction + 1, instruction);
 				case CLOSED_NONEXISTENT_BLOCK: print_error("Closed nonexistent block at instruction %d", env.current_instruction + 1);
-				case MAX_MEMORY_CELL_LIMIT: print_error("Attempted to set memory cell to %d, which is higher than the limit (255) at instruction %d", (int) env.memory[env.current_memory_cell] * 10 + instruction - '0', env.current_instruction + 1);
+				case MAX_MEMORY_CELL_LIMIT   : print_error("Attempted to set memory cell to %d, which is higher than the limit (255) at instruction %d", (int) env.memory[env.current_memory_cell] * 10 + instruction - '0', env.current_instruction + 1);
 			}
 		}
 		print_info("%s", env);
