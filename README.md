@@ -11,6 +11,8 @@ Modulang uses an array that contains 256 numbers with a range of 0 to 255 as its
 -            : decrement the current memory cell by 1
 #            : print the current memory cell as a decimal number
 p            : print the current memory cell as an ascii character
+$            : goes to the memory cell that is specified in the current memory cell
+!            : goes to the instruction that is specified in the current memory cell
 [            : opens a loop, loops the code in it for whatever the value in current memory cell is
 @            : opens a set digit block, the current memory cell is set to whatever number is in the block as long as its in the limit
 ;            : closes any block, currently closes loops and set digit blocks

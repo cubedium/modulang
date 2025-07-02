@@ -145,6 +145,18 @@ fn void start_set_digit(ModulangEnvironment* env)
 	env.memory[env.current_memory_cell] = 0;
 }
 
+fn void go_to_address_current_memory_cell(ModulangEnvironment* env)
+{
+	print_info("going to address %s", env.memory[env.current_memory_cell]);
+	env.current_memory_cell = env.memory[env.current_memory_cell];
+}
+
+fn void go_to_instruction_current_memory_cell(ModulangEnvironment* env)
+{
+	print_info("going to instruction %s", env.memory[env.current_memory_cell] + 1);
+	env.current_instruction = env.memory[env.current_memory_cell];
+}
+
 fn void? procces_instruction(char instruction, ModulangEnvironment* env)
 {
 	switch (instruction) {
@@ -154,6 +166,8 @@ fn void? procces_instruction(char instruction, ModulangEnvironment* env)
 		case '<'     : go_to_previous_memory_cell(env);
 		case '#'     : print_current_memory_cell_decimal(*env);
 		case 'p'     : print_current_memory_cell_ascii(*env);
+		case '$'     : go_to_address_current_memory_cell(env);
+		case '!'     : go_to_instruction_current_memory_cell(env);
 		case '['     : start_loop(env);
 		case '@'     : start_set_digit(env);
 		case ';'     : return close_block(env);
