@@ -1,1 +1,4 @@
-@101;>@10;</#;p>p
+/this program should print e and then a new line;
+
+@101;>@10;>@0;/#;?<<p>p;    /memory layout: [e][\n][0];
+/    >    >       << > ;

@@ -15,6 +15,7 @@ $            : goes to the memory cell that is specified in the current memory c
 !            : goes to the instruction that is specified in the current memory cell
 [            : opens a loop, loops the code in it for whatever the value in current memory cell is
 @            : opens a set digit block, the current memory cell is set to whatever number is in the block as long as its in the limit
+?            : opens an if statement, the code in it is ran if the current memory cell is equal to one
 /            : starts a comment, any code in it will be ignored until the comment is closed 
 ;            : closes any block, currently closes loops, set digit blocks, and comments
 ```

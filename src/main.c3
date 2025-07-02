@@ -4,6 +4,7 @@ import std::io;
 faultdef UNKNOWN_INSTRUCTION, CLOSED_NONEXISTENT_BLOCK, MAX_MEMORY_CELL_LIMIT;
 
 bool debug_mode = false;
+bool verbose_debug = false;
 
 // ------------
 // Logging  
@@ -37,6 +38,7 @@ struct ModulangBlocks (Printable)
 {
 	bool in_loop;
 	bool in_set_digit;
+	bool in_if_statement;
 	bool should_be_ignored;
 	ModulangLoopBlock loop;
 }
@@ -68,19 +70,23 @@ fn void decrement_current_memory_cell(ModulangEnvironment* env)
 
 fn void go_to_next_memory_cell(ModulangEnvironment* env)
 {
-	print_info("went to next memory cell");
+	print_info("went to next memory cell, current memory cell has value: %d", env.memory[env.current_memory_cell + 1]);
 	env.current_memory_cell += 1;
 }
 
 fn void go_to_previous_memory_cell(ModulangEnvironment* env)
 {
-	print_info("went to previous memory cell");
+	print_info("went to previous memory cell, current memory cell has value: %d", env.memory[env.current_memory_cell - 1]);
 	env.current_memory_cell -= 1;
 }
 
 fn void print_current_memory_cell_ascii(ModulangEnvironment env)
 {
-	print_info("printed character: %c", env.memory[env.current_memory_cell]);
+	switch (env.memory[env.current_memory_cell]) {
+		case '\0': print_info("printed character: \\0");
+		case '\n': print_info("printed character: \\n");
+		default  : print_info("printed character: %c", env.memory[env.current_memory_cell]);
+	}
 	io::printf("%c", env.memory[env.current_memory_cell]);
 	if (debug_mode) io::printn();
 }
@@ -116,6 +122,10 @@ fn void? close_block(ModulangEnvironment* env)
 		print_info("closing set digit block");
 		env.block.in_set_digit = false;
 		return;
+	} else if (env.block.in_if_statement) {
+		print_info("ending if statement");
+		env.block.in_if_statement = false;
+		return;
 	}
 	if (env.block.should_be_ignored) {
 		print_info("stopped ignoring instructions");
@@ -128,7 +138,13 @@ fn void? close_block(ModulangEnvironment* env)
 
 fn void do_nothing(char instruction)
 {
-	print_info("doing nothing at instruction '%c'", instruction);
+	if (verbose_debug) {
+		switch (instruction) {
+			case '\n': print_info("doing nothing at instruction '\\n'");
+			case '\0': print_info("doing nothing at instruction '\\0'");
+			default  : print_info("doing nothing at instruction '%c'", instruction);
+		}
+	}
 }
 
 fn void? procces_digit(ModulangEnvironment* env, char digit)
@@ -168,6 +184,17 @@ fn void start_comment(ModulangEnvironment* env) {
 	env.block.should_be_ignored = true;
 }
 
+fn void start_if_statement(ModulangEnvironment* env) {
+	print_info("started if statement");
+	if (env.memory[env.current_memory_cell] == 0) {
+		print_info("current memory cell is 0, continuing if statement");
+		env.block.in_if_statement = true;
+	} else {
+		print_info("current memory cell is not 0, stopping if statement and ignoring all instructions in this block");
+		env.block.should_be_ignored = true;
+	}
+}
+
 fn void? procces_instruction(char instruction, ModulangEnvironment* env)
 {
 	if (env.block.should_be_ignored && instruction != ';') {
@@ -185,6 +212,7 @@ fn void? procces_instruction(char instruction, ModulangEnvironment* env)
 		case '['     : start_loop(env);
 		case '@'     : start_set_digit(env);
 		case '/'     : start_comment(env);
+		case '?'     : start_if_statement(env);
 		case ';'     : return close_block(env);
 		case '0'..'9': return procces_digit(env, instruction - '0');
 		case ' '     : do_nothing(instruction);
@@ -208,10 +236,12 @@ fn int main(String[] args)
 	foreach (i, arg : args) {
 		if (i==0) { continue; }
 		switch (arg) {
-			case "--debug": debug_mode = true;
-			case "--file" : if (args.len >= i+2) filename = args[i+1];
-			case "--input": if (args.len >= i+2) input    = args[i+1]; filename = "__got_input";
-			default       : if (filename == "" && arg.ends_with(".modlang")) filename = arg;
+			case "--debug"        : debug_mode = true;
+			case "--verbose"      : verbose_debug = true;
+			case "--verbose-debug": verbose_debug = true; debug_mode = true;
+			case "--file"         : if (args.len >= i+2) filename = args[i+1];
+			case "--input"        : if (args.len >= i+2) input    = args[i+1]; filename = "__got_input";
+			default               : if (filename == "" && arg.ends_with(".modlang")) filename = arg;
 		}
 		print_info("%d: \"%s\". is it a possible file?: %s", i, arg, (arg.ends_with(".modlang")) ? "yes" : "no");
 	}
@@ -252,8 +282,11 @@ fn int main(String[] args)
 				case CLOSED_NONEXISTENT_BLOCK: print_error("Closed nonexistent block at instruction %d", env.current_instruction + 1);
 				case MAX_MEMORY_CELL_LIMIT   : print_error("Attempted to set memory cell to %d, which is higher than the limit (255) at instruction %d", (int) env.memory[env.current_memory_cell] * 10 + instruction - '0', env.current_instruction + 1);
 			}
+			return 1;
 		}
-		print_info("%s", env);
+		if (verbose_debug) {
+			print_info("%s", env);
+		}
 	}
 	
 	return 0;
