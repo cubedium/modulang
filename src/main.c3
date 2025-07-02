@@ -1,10 +1,12 @@
 module modulang;
 import std::io;
+import std::thread; // just for the sleep function
 
 faultdef UNKNOWN_INSTRUCTION, CLOSED_NONEXISTENT_BLOCK, MAX_MEMORY_CELL_LIMIT;
 
 bool debug_mode = false;
 bool verbose_debug = false;
+bool slow = false;
 
 // ------------
 // Logging  
@@ -239,6 +241,7 @@ fn int main(String[] args)
 			case "--debug"        : debug_mode = true;
 			case "--verbose"      : verbose_debug = true;
 			case "--verbose-debug": verbose_debug = true; debug_mode = true;
+			case "--slow"         : slow = true;
 			case "--file"         : if (args.len >= i+2) filename = args[i+1];
 			case "--input"        : if (args.len >= i+2) input    = args[i+1]; filename = "__got_input";
 			default               : if (filename == "" && arg.ends_with(".modlang")) filename = arg;
@@ -286,6 +289,10 @@ fn int main(String[] args)
 		}
 		if (verbose_debug) {
 			print_info("%s", env);
+		}
+		if (slow) {
+			// do something to make it wait 1 second
+			thread::sleep_ms(1000);
 		}
 	}
 	
