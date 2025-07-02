@@ -37,6 +37,7 @@ struct ModulangBlocks (Printable)
 {
 	bool in_loop;
 	bool in_set_digit;
+	bool should_be_ignored;
 	ModulangLoopBlock loop;
 }
 fn usz? ModulangBlocks.to_format(&self, Formatter* f) @dynamic => io::struct_to_format(*self, f, false);
@@ -116,6 +117,11 @@ fn void? close_block(ModulangEnvironment* env)
 		env.block.in_set_digit = false;
 		return;
 	}
+	if (env.block.should_be_ignored) {
+		print_info("stopped ignoring instructions");
+		env.block.should_be_ignored = false;
+		return;
+	}
 
 	return CLOSED_NONEXISTENT_BLOCK?;
 }
@@ -157,8 +163,16 @@ fn void go_to_instruction_current_memory_cell(ModulangEnvironment* env)
 	env.current_instruction = env.memory[env.current_memory_cell];
 }
 
+fn void start_comment(ModulangEnvironment* env) {
+	print_info("started ignoring instructions for comments");
+	env.block.should_be_ignored = true;
+}
+
 fn void? procces_instruction(char instruction, ModulangEnvironment* env)
 {
+	if (env.block.should_be_ignored && instruction != ';') {
+		instruction = ' ';
+	}
 	switch (instruction) {
 		case '+'     : increment_current_memory_cell(env);
 		case '-'     : decrement_current_memory_cell(env);
@@ -170,6 +184,7 @@ fn void? procces_instruction(char instruction, ModulangEnvironment* env)
 		case '!'     : go_to_instruction_current_memory_cell(env);
 		case '['     : start_loop(env);
 		case '@'     : start_set_digit(env);
+		case '/'     : start_comment(env);
 		case ';'     : return close_block(env);
 		case '0'..'9': return procces_digit(env, instruction - '0');
 		case ' '     : do_nothing(instruction);
