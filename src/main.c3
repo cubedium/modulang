@@ -7,6 +7,7 @@ faultdef UNKNOWN_INSTRUCTION, CLOSED_NONEXISTENT_BLOCK, MAX_MEMORY_CELL_LIMIT;
 bool debug_mode = false;
 bool verbose_debug = false;
 bool slow = false;
+bool advance_on_enter = false;
 
 // ------------
 // Logging  
@@ -42,6 +43,7 @@ struct ModulangBlocks (Printable)
 	bool in_set_digit;
 	bool in_if_statement;
 	bool should_be_ignored;
+	bool was_ignored;
 	ModulangLoopBlock loop;
 }
 fn usz? ModulangBlocks.to_format(&self, Formatter* f) @dynamic => io::struct_to_format(*self, f, false);
@@ -138,7 +140,7 @@ fn void? close_block(ModulangEnvironment* env)
 	return CLOSED_NONEXISTENT_BLOCK?;
 }
 
-fn void do_nothing(char instruction)
+fn void do_nothing(ModulangEnvironment* env, char instruction)
 {
 	if (verbose_debug) {
 		switch (instruction) {
@@ -147,6 +149,7 @@ fn void do_nothing(char instruction)
 			default  : print_info("doing nothing at instruction '%c'", instruction);
 		}
 	}
+	env.block.was_ignored = true;
 }
 
 fn void? procces_digit(ModulangEnvironment* env, char digit)
@@ -201,6 +204,9 @@ fn void? procces_instruction(char instruction, ModulangEnvironment* env)
 {
 	if (env.block.should_be_ignored && instruction != ';') {
 		instruction = ' ';
+		env.block.was_ignored = true;
+	} else {
+		env.block.was_ignored = false;
 	}
 	switch (instruction) {
 		case '+'     : increment_current_memory_cell(env);
@@ -217,11 +223,12 @@ fn void? procces_instruction(char instruction, ModulangEnvironment* env)
 		case '?'     : start_if_statement(env);
 		case ';'     : return close_block(env);
 		case '0'..'9': return procces_digit(env, instruction - '0');
-		case ' '     : do_nothing(instruction);
-		case '\n'    : do_nothing(instruction);
-		case '\0'    : do_nothing(instruction);
+		case ' '     : do_nothing(env, instruction);
+		case '\n'    : do_nothing(env, instruction);
+		case '\0'    : do_nothing(env, instruction);
 		default      : return UNKNOWN_INSTRUCTION?;
 	}
+
 }
 
 // ------------
@@ -238,13 +245,14 @@ fn int main(String[] args)
 	foreach (i, arg : args) {
 		if (i==0) { continue; }
 		switch (arg) {
-			case "--debug"        : debug_mode = true;
-			case "--verbose"      : verbose_debug = true;
-			case "--verbose-debug": verbose_debug = true; debug_mode = true;
-			case "--slow"         : slow = true;
-			case "--file"         : if (args.len >= i+2) filename = args[i+1];
-			case "--input"        : if (args.len >= i+2) input    = args[i+1]; filename = "__got_input";
-			default               : if (filename == "" && arg.ends_with(".modlang")) filename = arg;
+			case "--debug"           : debug_mode = true;
+			case "--verbose"         : verbose_debug = true;
+			case "--verbose-debug"   : verbose_debug = true; debug_mode = true;
+			case "--advance-on-enter": advance_on_enter = true;  slow = false;
+			case "--slow"            : advance_on_enter = false; slow = true;
+			case "--file"            : if (args.len >= i+2) filename = args[i+1];
+			case "--input"           : if (args.len >= i+2) input    = args[i+1]; filename = "__got_input";
+			default                  : if (filename == "" && arg.ends_with(".modlang")) filename = arg;
 		}
 		print_info("%d: \"%s\". is it a possible file?: %s", i, arg, (arg.ends_with(".modlang")) ? "yes" : "no");
 	}
@@ -287,12 +295,15 @@ fn int main(String[] args)
 			}
 			return 1;
 		}
-		if (verbose_debug) {
+		if (verbose_debug && !env.block.was_ignored) {
 			print_info("%s", env);
 		}
-		if (slow) {
-			// do something to make it wait 1 second
-			thread::sleep_ms(1000);
+		if  (!env.block.was_ignored) {
+			if (slow) {
+				thread::sleep_ms(1000);
+			} else if (advance_on_enter) {
+				(void) io::treadline();
+			}		
 		}
 	}
 	
