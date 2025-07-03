@@ -20,13 +20,18 @@ $            : goes to the memory cell that is specified in the current memory c
 ;            : closes any block, currently closes loops, set digit blocks, and comments
 ```
 
-## Current Flags
+## How to use
 ```
---debug            : turns on debug mode, which prints debug information to the console
---verbose          : turns on verbose mode, currently the only usage is to print extra debug information. Debug mode has to be on for it to work
---verbose-debug    : turns on both verbose and debug mode
---advance-on-enter : a debugging tool which continues to the next instruction once you press enter
---slow             : a debugging tool which slows down the program to do one instruction per second
---input <input>    : gives some input to be ran. It is a good idea to have the input in quotes
---file <filename>  : gives a file to be ran
+Usage:
+  modulang <filename> [OPTIONS]
+
+Options:
+  --debug            : turns on debug mode, which prints debug information to the console
+  --verbose          : turns on verbose mode, currently the only usage is to print extra debug information. Debug mode has to be on for it to work
+  --verbose-debug    : turns on both verbose and debug mode
+  --advance-on-enter : a debugging tool which continues to the next instruction once you press enter
+  --slow             : a debugging tool which slows down the program to do one instruction per second
+  --input <input>    : gives some input to be ran. It is a good idea to have the input in quotes
+  --file <filename>  : gives a file to be ran
+  --help             : shows this help information
 ```

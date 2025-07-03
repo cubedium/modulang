@@ -58,6 +58,25 @@ struct ModulangEnvironment (Printable)
 fn usz? ModulangEnvironment.to_format(&self, Formatter* f) @dynamic => io::struct_to_format(*self, f, false);
 
 // ------------
+// Miscellaneous
+// ------------
+
+fn void print_help_info()
+{
+	io::printn("Usage:");
+	io::printn("  modulang <filename> [OPTIONS]\n");
+	io::printn("Options:");
+	io::printn("  --debug            : turns on debug mode, which prints debug information to the console");
+ 	io::printn("  --verbose          : turns on verbose mode, currently the only usage is to print extra debug information. Debug mode has to be on for it to work");
+ 	io::printn("  --verbose-debug    : turns on both verbose and debug mode");
+ 	io::printn("  --advance-on-enter : a debugging tool which continues to the next instruction once you press enter");
+ 	io::printn("  --slow             : a debugging tool which slows down the program to do one instruction per second");
+ 	io::printn("  --input <input>    : gives some input to be ran. It is a good idea to have the input in quotes");
+ 	io::printn("  --file <filename>  : gives a file to be ran");
+	io::printn("  --help             : shows this help information");
+}
+
+// ------------
 // Instruction stuff
 // ------------
 fn void increment_current_memory_cell(ModulangEnvironment* env)
@@ -184,12 +203,14 @@ fn void go_to_instruction_current_memory_cell(ModulangEnvironment* env)
 	env.current_instruction = env.memory[env.current_memory_cell];
 }
 
-fn void start_comment(ModulangEnvironment* env) {
+fn void start_comment(ModulangEnvironment* env)
+{
 	print_info("started ignoring instructions for comments");
 	env.block.should_be_ignored = true;
 }
 
-fn void start_if_statement(ModulangEnvironment* env) {
+fn void start_if_statement(ModulangEnvironment* env)
+{
 	print_info("started if statement");
 	if (env.memory[env.current_memory_cell] == 0) {
 		print_info("current memory cell is 0, continuing if statement");
@@ -252,6 +273,7 @@ fn int main(String[] args)
 			case "--slow"            : advance_on_enter = false; slow = true;
 			case "--file"            : if (args.len >= i+2) filename = args[i+1];
 			case "--input"           : if (args.len >= i+2) input    = args[i+1]; filename = "__got_input";
+			case "--help"            : print_help_info();
 			default                  : if (filename == "" && arg.ends_with(".modlang")) filename = arg;
 		}
 		print_info("%d: \"%s\". is it a possible file?: %s", i, arg, (arg.ends_with(".modlang")) ? "yes" : "no");
